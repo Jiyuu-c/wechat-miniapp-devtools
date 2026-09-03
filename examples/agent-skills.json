@@ -1,0 +1,14 @@
+{
+  "skills": [
+    "skills/devtools-automation/SKILL.md",
+    "skills/miniapp-development-workflow/SKILL.md",
+    "skills/miniapp-visual-verification/SKILL.md"
+  ],
+  "subAgents": [
+    {
+      "name": "visual-validator",
+      "promptFile": "agents/visual-validator.md"
+    }
+  ],
+  "note": "Import these files according to your Agent tool's skill or prompt format."
+}

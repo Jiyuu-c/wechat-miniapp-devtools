@@ -1,0 +1,11 @@
+node_modules/
+.npm/
+.env
+.env.*
+!.env.example
+*.log
+.DS_Store
+Thumbs.db
+project.private.config.json
+.mcp-artifacts/
+LOCAL_SETUP.zh-CN.md

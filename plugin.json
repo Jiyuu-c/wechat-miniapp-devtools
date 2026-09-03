@@ -1,0 +1,23 @@
+{
+  "name": "wechat-miniapp-devtools",
+  "displayName": "WeChat Mini Program DevTools MCP",
+  "version": "1.0.0",
+  "description": "Portable MCP and Agent workflows for developing, automating, and visually verifying WeChat Mini Programs.",
+  "longDescription": "A generic, path-agnostic integration for stdio MCP clients. It wraps @creatoria/miniapp-mcp and the official WeChat DevTools CLI without bundling DevTools, bypassing login, or embedding machine-specific paths.",
+  "category": "development",
+  "tags": ["wechat", "mini-program", "devtools", "mcp", "automation", "visual-testing"],
+  "skills": [
+    "skills/devtools-automation",
+    "skills/miniapp-development-workflow",
+    "skills/miniapp-visual-verification"
+  ],
+  "subAgents": [
+    {
+      "id": "visual-validator",
+      "prompt": "subagents/visual-validator/prompt.md",
+      "description": "Connects to WeChat DevTools automation, checks page state, assertions, and screenshots."
+    }
+  ],
+  "cli": "scripts/run-mcp.js",
+  "license": "MIT"
+}

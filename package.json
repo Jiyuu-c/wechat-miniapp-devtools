@@ -1,0 +1,18 @@
+{
+  "name": "wechat-miniapp-devtools",
+  "version": "1.0.0",
+  "description": "Portable MCP and Agent workflows for WeChat Mini Program DevTools automation.",
+  "private": false,
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "preflight": "node scripts/preflight.js",
+    "devtools:auto": "node scripts/devtools-auto.js",
+    "mcp": "node scripts/run-mcp.js"
+  },
+  "dependencies": {
+    "@creatoria/miniapp-mcp": "0.2.3"
+  }
+}
