@@ -1,6 +1,6 @@
 'use strict';
-
 const path = require('path');
+const { spawn } = require('child_process');
 
 function valueFromArg(argv, names) {
   for (let i = 0; i < argv.length; i += 1) {
@@ -41,4 +41,31 @@ function validatePorts(config) {
   }
 }
 
-module.exports = { parseConfig, printUsage, validatePorts };
+// Wrap an argument for cmd.exe when using windowsVerbatimArguments. Each
+// argument must be enclosed in double quotes so spaces, Chinese characters,
+// or other cmd metacharacters in paths are preserved as one token.
+function quoteForCmd(arg) {
+  return '"' + String(arg).replace(/"/g, '\\"') + '"';
+}
+
+// On Windows, .cmd/.bat batch files cannot be spawned with shell:false
+// (CreateProcess rejects them with EINVAL), and Node's spawn with
+// shell:true on Windows does NOT quote the args it passes to cmd, so
+// paths containing spaces (e.g. "Program Files") and metacharacters
+// would be split incorrectly. Spawn the batch file via cmd.exe with a
+// fully-quoted command line instead.
+function isWindowsBatch(file) {
+  return process.platform === 'win32' && typeof file === 'string' && /\.(bat|cmd)$/i.test(file);
+}
+
+function spawnBatch(file, args, opts) {
+  const inner = quoteForCmd(file) + (args.length ? ' ' + args.map(quoteForCmd).join(' ') : '');
+  // Wrap the whole command in an outer pair of double quotes so cmd.exe's
+  // /s /c parser strips them and executes the inner line as-is instead of
+  // treating the first quoted token as a literal program name to look up.
+  const line = '"' + inner + '"';
+  const comspec = process.env.ComSpec || 'cmd.exe';
+  return spawn(comspec, ['/d', '/s', '/c', line], Object.assign({ windowsVerbatimArguments: true, windowsHide: true }, opts));
+}
+
+module.exports = { parseConfig, printUsage, validatePorts, isWindowsBatch, spawnBatch };

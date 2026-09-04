@@ -29,16 +29,47 @@ Do not use the HTTP port as the MCP automation port. The launcher passes the aut
 - WeChat DevTools installed and logged in.
 - CLI/HTTP automation enabled in WeChat DevTools security settings.
 - A Mini Program root containing `project.config.json` or `app.json`.
-- Network access the first time npm downloads `@creatoria/miniapp-mcp@0.2.3`.
+- Network access the first time npm downloads `@creatoria/miniapp-mcp@0.2.3`. Optionally run `npm install` once to keep a local copy in `node_modules/`; `scripts/run-mcp.js` then starts it directly (offline, no registry resolution on every launch).
+
+## Machine checklist before first run
+
+Walk this list before you blame the scripts:
+
+1. WeChat DevTools is installed, open, and logged in.
+2. DevTools Security Settings → Service Port is **On**. Note the exact port number shown there; it is the DevTools HTTP service port and may not be `37733`.
+3. The DevTools CLI path exists and is executable (`F:\微信web开发者工具\cli.bat` on Windows is just an example).
+4. The Mini Program root directly contains `project.config.json` or `app.json`.
+5. Node.js 18+ is on `PATH` (or use an absolute `command` in the MCP config).
+6. The chosen automation WebSocket port is not already in use by another DevTools automation session.
+7. The first run needs npm registry access unless you ran `npm install` first.
+
+If `cli auto` fails with `must be restarted on port <requested> first`, you passed the wrong HTTP port to `--http-port` (see "Using an already-running DevTools").
+
+## Switching to another Mini Program
+
+Only these values differ between projects:
+
+| What changes | Where |
+|---|---|
+| Mini Program project root | `--project-path` / `MINIAPP_PROJECT_PATH` |
+| MCP server name (optional) | the service key in your MCP client config |
+| Automation WebSocket port | `--automation-port` / `WECHAT_AUTOMATION_PORT` — give each concurrently running DevTools session its own port |
+| DevTools HTTP service port | `--http-port` / `WECHAT_HTTP_PORT` — must equal the Service Port number shown in DevTools Settings (default assumption `37733`) |
+
+See `examples/multi-project.example.json` for a two-project config. The DevTools CLI path and the repository path normally stay the same. The target project must already be open in (or openable by) DevTools, and only one session may use a given automation port at a time. The MCP launcher (`run-mcp.js`) needs no other change when you switch projects — restart it with the new environment values.
+
+## Using an already-running DevTools
+
+When DevTools is already open and its HTTP service (Settings → Security Settings → Service Port) is enabled, the service port shown in that dialog may differ from the default `37733`. Pass that actual port as `--http-port` (or `WECHAT_HTTP_PORT`) to `scripts/devtools-auto.js` (which forwards it to `cli auto --port`) so the running IDE can be located and automation can be enabled on `--auto-port`. `scripts/run-mcp.js` does not take an HTTP port. If the port mismatches, `cli auto` aborts with `IDE server has started on http://127.0.0.1:<actual> and must be restarted on port <requested> first`.
 
 ## Quick start
 
 From this repository:
 
 ```bash
-node scripts/preflight.js --project-path /path/to/miniprogram --cli-path /path/to/cli.bat --http-port 37733 --automation-port 37735
-node scripts/devtools-auto.js --project-path /path/to/miniprogram --cli-path /path/to/cli.bat --http-port 37733 --automation-port 37735
-node scripts/run-mcp.js --project-path /path/to/miniprogram --cli-path /path/to/cli.bat --automation-port 37735
+node scripts/preflight.js    --project-path /path/to/miniprogram --cli-path /path/to/cli.bat --http-port <http-port> --automation-port <auto-port>
+node scripts/devtools-auto.js --project-path /path/to/miniprogram --cli-path /path/to/cli.bat --http-port <http-port> --automation-port <auto-port>
+node scripts/run-mcp.js       --project-path /path/to/miniprogram --cli-path /path/to/cli.bat --automation-port <auto-port>
 ```
 
 On Windows, use `cli.bat`. On macOS/Linux, use the executable CLI path provided by your WeChat DevTools installation.
@@ -89,6 +120,22 @@ MCP_PACKAGE_VERSION
 5. Read page state before interacting.
 6. Use assertions and screenshots after important actions.
 7. Disconnect the MCP session without unnecessarily closing DevTools.
+
+## Handing off to another agent
+
+Two tiers — the checklist is an upper bound, not a per-run minimum.
+
+**Tier A — the other agent runs on the same machine and can read this repo.** Three things are enough:
+
+```text
+Use the local WeChat DevTools automation helper at <REPOSITORY_PATH>
+to work on Mini Program project <PROJECT_ROOT>.
+Feature goal: <what to build / verify and the acceptance path>.
+```
+
+The agent fills in the CLI path, service port, automation port, and DevTools state from this repo and its local setup notes, and probes ports itself. Only correct it verbally if a path moved on this machine (e.g. DevTools was reinstalled to a new drive).
+
+**Tier B — the other agent cannot read local files (cloud agent, remote machine, or unknown).** Paste a complete config block instead: project root, DevTools CLI path, the DevTools Service Port number shown in Security Settings, the automation WebSocket port, the acceptance path, and the security red lines from the section below. Do not omit any value in this tier.
 
 ## Security and scope
 
