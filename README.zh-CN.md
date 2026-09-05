@@ -10,24 +10,23 @@
 
 - 小程序项目根目录
 - 微信开发者工具 CLI 路径
-- HTTP 服务端口
 - 自动化 WebSocket 端口
 
-两个端口不是一回事。MCP 的 `--automation-port` 必须指向自动化 WebSocket 端口。
+两个端口不是一回事。MCP 的 `--automation-port` 必须指向自动化 WebSocket 端口。HTTP 服务端口在每次 IDE 重启后都会变化，因此在本项目中是**可选**的：不传 `--http-port` 时，`scripts/devtools-auto.js` 不会向 `cli auto` 转发 `--port`，由官方 CLI 自行定位正在运行的 IDE（与 `miniprogram-automator.launch` 行为一致），脚本还会从 IDE 的 `Default/.ide` 文件读出当前实际端口用于报告。只有并行运行多个 DevTools 实例需要钉死端口时才显式设置。
 
 ## 首次运行前机器检查清单
 
 先确认这几点，再排查脚本本身：
 
 1. 微信开发者工具已安装、已打开并登录。
-2. 开发者工具 `设置→安全设置→服务端口` 已开启；记下对话框里显示的实际端口号，它就是 HTTP 服务端口，不一定等于 `37733`。
+2. 开发者工具 `设置→安全设置→服务端口` 已开启。对话框里显示的端口号每次重启都会变，不需要抄到任何配置里，脚本会自动探测；只有并行多实例时才需要显式指定。
 3. 开发者工具 CLI 路径存在且可执行（Windows 上如 `F:\微信web开发者工具\cli.bat`，仅为示例）。
 4. 小程序根目录直接包含 `project.config.json` 或 `app.json`。
 5. Node.js 18+ 可用（MCP 配置里 `command` 可用绝对路径）。
-6. 选定的自动化 WebSocket 端口没有被其他自动化会话占用。
+6. 选定的自动化 WebSocket 端口若已被占用，脚本会复用现存会话而不是再起一个。
 7. 首次运行需要能访问 npm registry；若先执行 `npm install`，`scripts/run-mcp.js` 会直接使用 `node_modules` 里的本地副本（可离线、启动更快、不再每次解析 registry）。
 
-若 `cli auto` 报 `must be restarted on port <requested> first`，说明传给 `--http-port` 的 HTTP 端口不对（见「当开发者工具已在运行」）。
+若显式传了过期的 `--http-port`，`cli auto` 仍会报 `must be restarted on port <requested> first`；不传该参数即可避免（见「当开发者工具已在运行」）。
 
 ## 切换/新增其他小程序项目
 
@@ -38,23 +37,32 @@
 | 小程序项目根目录 | `--project-path` / `MINIAPP_PROJECT_PATH` |
 | MCP 服务名（可选） | MCP 客户端配置里的服务 key |
 | 自动化 WebSocket 端口 | `--automation-port` / `WECHAT_AUTOMATION_PORT`——并行运行的每个 DevTools 会话各用不同端口 |
-| 开发者工具 HTTP 服务端口 | `--http-port` / `WECHAT_HTTP_PORT`——必须等于 DevTools 设置中「服务端口」显示的值（默认假设 `37733`） |
+| 开发者工具 HTTP 服务端口（可选） | `--http-port` / `WECHAT_HTTP_PORT`——仅并行钉死多实例时使用；省略时 CLI 自动发现正在运行的 IDE |
 
 参考 `examples/multi-project.example.json` 的双项目配置。CLI 路径与仓库路径一般不变；目标项目需已在开发者工具中打开（或可被 CLI 打开），同一自动化端口同一时间只允许一个会话。切换项目只需用新值重启 `run-mcp.js`，脚本本身无需其他改动。
 
 ## 当开发者工具已在运行
 
-若开发者工具已开启并启用了「服务端口」（设置→安全设置→服务端口），对话框中显示的端口号可能与默认 `37733` 不同。这个值只对 `scripts/devtools-auto.js` 的 `--http-port`（即 `cli auto --port`）有意义——`scripts/run-mcp.js` 不接受 HTTP 端口。请把实际端口作为 `--http-port`（或环境变量 `WECHAT_HTTP_PORT`）传给 `devtools-auto`，这样 `cli auto` 才能定位到正在运行的 IDE 并在指定的 `--auto-port` 上开启自动化。若端口不匹配，`cli auto` 会中止并提示 `IDE server has started on http://127.0.0.1:<actual> and must be restarted on port <requested> first`。
+`scripts/devtools-auto.js` 现在是幂等的。它先探测自动化 WebSocket 端口：
+
+- 若端口上已有会话监听，输出 `reusing the existing session` 后直接以 0 退出，不触碰现存会话。这也是多个 Agent 排队共用一个 DevTools 实例时安全的原因。
+- 若端口空闲，才执行 `cli auto --project <root> --auto-port <port>` 开启自动化。未显式设置 `--http-port`（或 `WECHAT_HTTP_PORT`）时不转发 `--port`，由 CLI 自行定位正在运行的 IDE，因此硬编码的服务端口过期也不会再触发 `IDE server has started on http://127.0.0.1:<actual> and must be restarted on port <requested> first`。
+
+`scripts/preflight.js` 会报告从 IDE 的 `Default/.ide` 文件检测到的当前服务端口；若显式传入的端口与运行中的 IDE 不一致会被标记为过期。自动化端口已被占用会被报告为「可复用」而不是失败。
+
+安全设置中的「服务端口」开关仍需打开，只是它的具体数值不再需要抄进任何配置。
 
 ## 启动示例
 
 在本目录执行，替换尖括号中的值：
 
 ```powershell
-node scripts/preflight.js    --project-path "<MINIAPP_PROJECT_PATH>" --cli-path "<WECHAT_DEVTOOLS_CLI_PATH>" --http-port <http-port> --automation-port <auto-port>
-node scripts/devtools-auto.js --project-path "<MINIAPP_PROJECT_PATH>" --cli-path "<WECHAT_DEVTOOLS_CLI_PATH>" --http-port <http-port> --automation-port <auto-port>
+node scripts/preflight.js    --project-path "<MINIAPP_PROJECT_PATH>" --cli-path "<WECHAT_DEVTOOLS_CLI_PATH>" --automation-port <auto-port>
+node scripts/devtools-auto.js --project-path "<MINIAPP_PROJECT_PATH>" --cli-path "<WECHAT_DEVTOOLS_CLI_PATH>" --automation-port <auto-port>
 node scripts/run-mcp.js       --project-path "<MINIAPP_PROJECT_PATH>" --cli-path "<WECHAT_DEVTOOLS_CLI_PATH>" --automation-port <auto-port>
 ```
+
+只有需要并行钉死某个 DevTools 实例时才追加 `--http-port <port>`。
 
 推荐顺序是先运行 `devtools-auto.js`，再让 Agent 启动 `run-mcp.js` 并调用 `miniprogram_connect(port=<auto-port>)`。已有自动化会话时不要重复 launch。当前机器的真实值请查看本地 `LOCAL_SETUP.zh-CN.md`。
 
@@ -64,7 +72,7 @@ node scripts/run-mcp.js       --project-path "<MINIAPP_PROJECT_PATH>" --cli-path
 2. 将 `<REPOSITORY_PATH>` 替换为本目录绝对路径。
 3. 修改 `MINIAPP_PROJECT_PATH`。
 4. 修改 `WECHAT_DEVTOOLS_CLI_PATH`。
-5. 确认 `WECHAT_HTTP_PORT` 和 `WECHAT_AUTOMATION_PORT`。
+5. 确认 `WECHAT_AUTOMATION_PORT`（`WECHAT_HTTP_PORT` 可选，仅并行多实例时需要）。
 6. 将 JSON 粘贴到对应工具的自定义 MCP JSON 配置中。
 
 通用示例：
@@ -78,7 +86,6 @@ node scripts/run-mcp.js       --project-path "<MINIAPP_PROJECT_PATH>" --cli-path
       "env": {
         "MINIAPP_PROJECT_PATH": "<project-root>",
         "WECHAT_DEVTOOLS_CLI_PATH": "<wechat-devtools-cli-path>",
-        "WECHAT_HTTP_PORT": "37733",
         "WECHAT_AUTOMATION_PORT": "37735"
       }
     }
@@ -87,6 +94,30 @@ node scripts/run-mcp.js       --project-path "<MINIAPP_PROJECT_PATH>" --cli-path
 ```
 
 如果客户端无法识别 `node`，请将 `command` 改成 Node.js 的绝对路径，例如 `C:/Program Files/nodejs/node.exe`。
+
+## 在 ZCode 中配置
+
+ZCode 从用户级配置 `~/.zcode/cli/config.json` 或工作区配置 `<repo>/.zcode/config.json` 的 `mcp.servers` 键读取 MCP 服务，并在会话启动时自动连接。复制 `examples/mcp-config.zcode.json` 并合并进目标配置文件：
+
+```json
+{
+  "mcp": {
+    "servers": {
+      "wechat-miniapp-devtools": {
+        "command": "node",
+        "args": ["<REPOSITORY_PATH>/scripts/run-mcp.js"],
+        "env": {
+          "MINIAPP_PROJECT_PATH": "<project-root>",
+          "WECHAT_DEVTOOLS_CLI_PATH": "<wechat-devtools-cli-path>",
+          "WECHAT_AUTOMATION_PORT": "37735"
+        }
+      }
+    }
+  }
+}
+```
+
+保存后重启 ZCode 会话，在 设置→MCP 中确认连接状态。需要工作流指引时，可把本仓库 `skills/*/SKILL.md` 复制到 `~/.zcode/skills/` 下，即可在所有工作区生效。
 
 ## 选择特定项目
 

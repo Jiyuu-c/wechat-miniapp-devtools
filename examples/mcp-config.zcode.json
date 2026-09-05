@@ -1,0 +1,18 @@
+{
+  "mcp": {
+    "servers": {
+      "wechat-miniapp-devtools": {
+        "command": "node",
+        "args": [
+          "<REPOSITORY_PATH>/scripts/run-mcp.js"
+        ],
+        "env": {
+          "MINIAPP_PROJECT_PATH": "D:/path/to/miniprogram",
+          "WECHAT_DEVTOOLS_CLI_PATH": "D:/path/to/wechat/cli.bat",
+          "WECHAT_AUTOMATION_PORT": "37735",
+          "MCP_PACKAGE_VERSION": "0.2.3"
+        }
+      }
+    }
+  }
+}
