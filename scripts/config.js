@@ -37,6 +37,9 @@ function parseConfig(argv = process.argv.slice(2)) {
 
 function printUsage(command) {
   console.log(`Usage: node scripts/${command}.js --project-path <path> --cli-path <path> [options]`);
+  if (command === 'devtools-auto') {
+    console.log('  --force                     re-arm automation even when the port is already listening (recovery)');
+  }
   console.log('Options:');
   console.log('  --project-path <path>       Mini Program project root');
   console.log('  --cli-path <path>           WeChat DevTools CLI path');

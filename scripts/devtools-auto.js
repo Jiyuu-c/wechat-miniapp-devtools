@@ -19,10 +19,17 @@ validatePorts(config);
 (async () => {
   // Reuse a live automation session instead of disturbing it. Re-running
   // `cli auto` against an enabled port can restart the session and break
-  // other MCP clients connected to it.
+  // other MCP clients connected to it. --force re-arms the port anyway: a
+  // listening port does not guarantee a healthy session (page-level
+  // automation commands can hang after a prior client disappeared), and
+  // `cli auto` is the documented way to recover that.
+  const force = process.argv.includes('--force');
   if (await probePort(config.automationPort)) {
-    console.log(`Automation already enabled on 127.0.0.1:${config.automationPort}; reusing the existing session (cli auto skipped).`);
-    return;
+    if (!force) {
+      console.log(`Automation already enabled on 127.0.0.1:${config.automationPort}; reusing the existing session (cli auto skipped). Pass --force to re-arm it.`);
+      return;
+    }
+    console.log(`Automation port 127.0.0.1:${config.automationPort} is busy; re-arming it anyway (--force). Any client connected to it will be disrupted.`);
   }
 
   const args = ['auto', '--project', config.projectPath, '--auto-port', String(config.automationPort)];

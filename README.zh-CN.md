@@ -52,6 +52,22 @@
 
 安全设置中的「服务端口」开关仍需打开，只是它的具体数值不再需要抄进任何配置。
 
+## 会话降级与页面级工具超时
+
+自动化端口在监听不代表会话健康。某些 DevTools 版本 + 基础库组合下，会话级工具
+（`miniprogram_connect`、`miniprogram_get_page_stack`、`miniprogram_navigate`、
+`miniprogram_screenshot`、`miniprogram_evaluate`、`miniprogram_get_system_info`）
+正常，而所有页面/元素级工具（`page_query`、`page_get_data`、`element_tap`、
+`snapshot_page` 等）永远挂起。遇到这种情况：
+
+- 用 `miniprogram_evaluate` 等价替代：它在 app 上下文执行 JS，可以读写页面数据
+  （`getCurrentPages()`、`setData`）、调用页面方法、驱动业务逻辑——已端到端实测可用。
+- 用 `node scripts/devtools-auto.js ... --force` 重新 arm 会话：端口仍在监听时也会
+  执行 `cli auto`（会重启项目窗口，先确认没有别人正在使用 DevTools）。
+
+这类页面级挂起来自 DevTools 自身的页面自动化桥接，与本仓库封装无关：用
+`miniprogram-automator` 直连可以完全复现。
+
 ## 启动示例
 
 在本目录执行，替换尖括号中的值：

@@ -28,5 +28,6 @@ WeChat DevTools `--port` is the HTTP service port. `--auto-port` is the automati
 - Port in use: reuse the existing session or select a different automation port; do not launch parallel MCP probes.
 - Windows launch failure: start automation through the official CLI wrapper, then use MCP `connect` instead of repeatedly calling MCP `launch`.
 - Screenshot timeout: serialize screenshots, clear stale MCP processes, and reconnect once.
+- Page/element tools hang while session-level tools respond: the page automation bridge is degraded. Replace page reads/writes with `miniprogram_evaluate` (`getCurrentPages()`, `setData`, page methods), or re-arm the session with `scripts/devtools-auto.js --force` (restarts the project window — coordinate with other users first).
 
 Never request or expose credentials, AppSecrets, cookies, or tokens.

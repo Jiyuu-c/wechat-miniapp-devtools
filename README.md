@@ -71,6 +71,15 @@ See `examples/multi-project.example.json` for a two-project config. The DevTools
 
 The service port shown in DevTools Settings → Security Settings must still be switched **On**; its numeric value just no longer needs to be copied into any config.
 
+## Degraded sessions and page-level tool timeouts
+
+A listening automation port does not guarantee a healthy session. Depending on the DevTools build and base library, the session-level tools (`miniprogram_connect`, `miniprogram_get_page_stack`, `miniprogram_navigate`, `miniprogram_screenshot`, `miniprogram_evaluate`, `miniprogram_get_system_info`) can respond while every page/element tool (`page_query`, `page_get_data`, `element_tap`, `snapshot_page`, ...) hangs forever. When that happens:
+
+- Use `miniprogram_evaluate` as a drop-in replacement: it executes JS in the app context, so it can read and write page data (`getCurrentPages()`, `setData`), call page methods, and drive business logic — verified working end to end.
+- Re-arm the session with `node scripts/devtools-auto.js ... --force`, which runs `cli auto` even though the port is listening (this restarts the project window, so coordinate with anyone else using DevTools first).
+
+These page-level hangs come from the DevTools/page-automation bridge itself, not from this repository: connecting with `miniprogram-automator` directly reproduces them identically.
+
 ## Quick start
 
 From this repository:
