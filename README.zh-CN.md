@@ -14,6 +14,8 @@
 
 两个端口不是一回事。MCP 的 `--automation-port` 必须指向自动化 WebSocket 端口。HTTP 服务端口在每次 IDE 重启后都会变化，因此在本项目中是**可选**的：不传 `--http-port` 时，`scripts/devtools-auto.js` 不会向 `cli auto` 转发 `--port`，由官方 CLI 自行定位正在运行的 IDE（与 `miniprogram-automator.launch` 行为一致），脚本还会从 IDE 的 `Default/.ide` 文件读出当前实际端口用于报告。只有并行运行多个 DevTools 实例需要钉死端口时才显式设置。
 
+自动化 WebSocket 端口同理**不是永久固定值**：IDE 冷启后不会有任何进程在旧端口上监听，必须先用官方 CLI 显式开启——`cli auto --project <项目根> --auto-port <端口>`（Windows 上 `cli.bat` 必须用 PowerShell 的 `&` 调用，bash 里 `cmd //c` 转义会进交互模式），再让 MCP 使用同一个端口。本机当前约定 `9420`（旧约定 37735 已失效）。
+
 ## 首次运行前机器检查清单
 
 先确认这几点，再排查脚本本身：
@@ -82,6 +84,11 @@ node scripts/run-mcp.js       --project-path "<MINIAPP_PROJECT_PATH>" --cli-path
 
 推荐顺序是先运行 `devtools-auto.js`，再让 Agent 启动 `run-mcp.js` 并调用 `miniprogram_connect(port=<auto-port>)`。已有自动化会话时不要重复 launch。当前机器的真实值请查看本地 `LOCAL_SETUP.zh-CN.md`。
 
+两条 2026-09-30 实测经验：
+
+- 连接后第一次 `miniprogram_get_page_stack` 若报 10 秒超时，通常是 IDE 还在加载项目——等几秒直接重试即可，不要急着重启整套流程。
+- `miniprogram_screenshot` 的 `filename` 只能是纯文件名（禁止任何路径分隔符，MCP 有防路径穿越校验），文件自动存到 MCP 进程工作目录的 `.mcp-artifacts/session-*/` 下，按返回的相对路径再用绝对路径读取。
+
 ## 在 Accio Work / WorkBuddy / Trae 中配置
 
 1. 复制 `examples/mcp-config.example.json`。
@@ -102,7 +109,7 @@ node scripts/run-mcp.js       --project-path "<MINIAPP_PROJECT_PATH>" --cli-path
       "env": {
         "MINIAPP_PROJECT_PATH": "<project-root>",
         "WECHAT_DEVTOOLS_CLI_PATH": "<wechat-devtools-cli-path>",
-        "WECHAT_AUTOMATION_PORT": "37735"
+        "WECHAT_AUTOMATION_PORT": "9420"
       }
     }
   }
@@ -125,7 +132,7 @@ ZCode 从用户级配置 `~/.zcode/cli/config.json` 或工作区配置 `<repo>/.
         "env": {
           "MINIAPP_PROJECT_PATH": "<project-root>",
           "WECHAT_DEVTOOLS_CLI_PATH": "<wechat-devtools-cli-path>",
-          "WECHAT_AUTOMATION_PORT": "37735"
+          "WECHAT_AUTOMATION_PORT": "9420"
         }
       }
     }

@@ -9,7 +9,7 @@
         "env": {
           "MINIAPP_PROJECT_PATH": "D:/path/to/miniprogram",
           "WECHAT_DEVTOOLS_CLI_PATH": "D:/path/to/wechat/cli.bat",
-          "WECHAT_AUTOMATION_PORT": "37735",
+          "WECHAT_AUTOMATION_PORT": "9420",
           "MCP_PACKAGE_VERSION": "0.2.3"
         }
       }

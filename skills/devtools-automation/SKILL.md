@@ -19,12 +19,14 @@ Use this skill when a task needs WeChat DevTools control, page interaction, scre
 
 ## Port rule
 
-WeChat DevTools `--port` is the HTTP service port. `--auto-port` is the automation WebSocket port. The MCP `--port` argument must be the automation port. Never conflate the two.
+WeChat DevTools `--port` is the HTTP service port. `--auto-port` is the automation WebSocket port. The MCP `--port` argument must be the automation port. Never conflate the two. The automation port is not fixed across IDE restarts: re-arm it with `cli auto --project <root> --auto-port <port>` after every IDE cold start (on Windows call `cli.bat` from PowerShell with `&`), and connect MCP to the same port.
 
 ## Recovery
 
 - Project not found: verify the project root contains `project.config.json` or `app.json`.
-- Connection refused: verify DevTools security settings and the automation port.
+- Connection refused: verify DevTools security settings and re-arm the automation port with `cli auto --auto-port` (it does not survive an IDE restart).
+- First page-stack call times out (10s) right after connecting: the IDE is likely still loading the project — wait a few seconds and retry before restarting the whole flow.
+- Screenshot filename rejected: pass a bare filename without path separators; files land under `.mcp-artifacts/session-*/` in the MCP process working directory.
 - Port in use: reuse the existing session or select a different automation port; do not launch parallel MCP probes.
 - Windows launch failure: start automation through the official CLI wrapper, then use MCP `connect` instead of repeatedly calling MCP `launch`.
 - Screenshot timeout: serialize screenshots, clear stale MCP processes, and reconnect once.

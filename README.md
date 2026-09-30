@@ -55,7 +55,7 @@ Only these values differ between projects:
 |---|---|
 | Mini Program project root | `--project-path` / `MINIAPP_PROJECT_PATH` |
 | MCP server name (optional) | the service key in your MCP client config |
-| Automation WebSocket port | `--automation-port` / `WECHAT_AUTOMATION_PORT` — give each concurrently running DevTools session its own port |
+| Automation WebSocket port | `--automation-port` / `WECHAT_AUTOMATION_PORT` — not fixed across IDE restarts: after every IDE cold start, re-arm it with `cli auto --auto-port` before connecting; give each concurrently running DevTools session its own port |
 | DevTools HTTP service port (optional) | `--http-port` / `WECHAT_HTTP_PORT` — only for pinning parallel DevTools instances; when omitted, the CLI discovers the running IDE automatically |
 
 See `examples/multi-project.example.json` for a two-project config. The DevTools CLI path and the repository path normally stay the same. The target project must already be open in (or openable by) DevTools, and only one session may use a given automation port at a time. The MCP launcher (`run-mcp.js`) needs no other change when you switch projects — restart it with the new environment values.
@@ -65,7 +65,7 @@ See `examples/multi-project.example.json` for a two-project config. The DevTools
 `scripts/devtools-auto.js` is idempotent. It first probes the automation WebSocket port:
 
 - If something is already listening there, it prints `reusing the existing session` and exits 0 without touching the live session. This is what makes several agents take turns on one DevTools instance safe.
-- If the port is free, it enables automation with `cli auto --project <root> --auto-port <port>`. When `--http-port` (or `WECHAT_HTTP_PORT`) is not set, no `--port` is forwarded and the CLI locates the running IDE by itself, so a stale hard-coded service port can no longer abort the call with `IDE server has started on http://127.0.0.1:<actual> and must be restarted on port <requested> first`.
+- If the port is free, it enables automation with `cli auto --project <root> --auto-port <port>`. When `--http-port` (or `WECHAT_HTTP_PORT`) is not set, no `--port` is forwarded and the CLI locates the running IDE by itself, so a stale hard-coded service port can no longer abort the call with `IDE server has started on http://127.0.0.1:<actual> and must be restarted on port <requested> first`. On Windows, invoke `cli.bat` from PowerShell with the call operator (`& "...\cli.bat" auto ...`); escaping it through bash `cmd //c` drops into interactive mode.
 
 `scripts/preflight.js` reports the currently detected HTTP service port (read from the IDE's `Default/.ide` file) and, if you passed an explicit one that no longer matches the running IDE, flags it as stale. A listening automation port is reported as reusable, not as a failure.
 
@@ -106,7 +106,7 @@ The important fields are:
 - `env.WECHAT_DEVTOOLS_CLI_PATH`: the WeChat DevTools CLI path.
 - `env.WECHAT_AUTOMATION_PORT`: the automation WebSocket port.
 
-`WECHAT_HTTP_PORT` is optional and only affects `devtools-auto.js`; omit it and the CLI discovers the running IDE. For multiple projects, create one named MCP server per project. Use one automation WebSocket port per active DevTools session.
+`WECHAT_HTTP_PORT` is optional and only affects `devtools-auto.js`; omit it and the CLI discovers the running IDE. For multiple projects, create one named MCP server per project. Use one automation WebSocket port per active DevTools session, and remember the port must be re-armed via `cli auto --auto-port` after every IDE restart.
 
 ### ZCode
 
@@ -122,7 +122,7 @@ ZCode reads MCP servers from its user configuration (`~/.zcode/cli/config.json`)
         "env": {
           "MINIAPP_PROJECT_PATH": "<project-root>",
           "WECHAT_DEVTOOLS_CLI_PATH": "<wechat-devtools-cli-path>",
-          "WECHAT_AUTOMATION_PORT": "37735"
+          "WECHAT_AUTOMATION_PORT": "9420"
         }
       }
     }
@@ -160,8 +160,8 @@ MCP_PACKAGE_VERSION
 2. Start or reuse DevTools automation with `scripts/devtools-auto.js`.
 3. Start the MCP server with `scripts/run-mcp.js`.
 4. Call `miniprogram_connect` with the automation WebSocket port.
-5. Read page state before interacting.
-6. Use assertions and screenshots after important actions.
+5. Read page state before interacting. If the first call right after connecting times out (10s built-in), the IDE is probably still loading the project — wait a few seconds and retry.
+6. Use assertions and screenshots after important actions. Note `miniprogram_screenshot` only accepts a bare filename (no path separators; path-traversal validation) and writes it under `.mcp-artifacts/session-*/` in the MCP process working directory.
 7. Disconnect the MCP session without unnecessarily closing DevTools.
 
 ## Handing off to another agent
